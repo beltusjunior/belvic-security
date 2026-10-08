@@ -94,6 +94,19 @@ details[open] .more{display:none}
 .lead .status.ok{color:var(--ok)} .lead .status.bad{color:var(--bad)}
 .hp{position:absolute;left:-9999px}
 a.book{display:inline-block;font:700 .95rem var(--display);padding:13px 20px;border-radius:6px;border:1.5px solid var(--accent);color:var(--accent);text-decoration:none}
+.pkgs{padding:22px;display:grid;gap:14px}
+.pkgs>p{margin:0;color:var(--muted);max-width:62ch}
+.pkg-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.pkg{border:1px solid var(--line);border-radius:8px;padding:16px;display:grid;gap:8px;align-content:start;background:var(--bg);min-width:0}
+.pkg.rec{border:2px solid var(--accent);background:var(--surface)}
+.pkg .badge{justify-self:start;font:600 .7rem var(--mono);letter-spacing:.06em;text-transform:uppercase;background:var(--accent);color:var(--accent-ink);padding:3px 8px;border-radius:999px}
+.pkg h3{margin:0;font:700 1.05rem var(--display)}
+.pkg .price{font:800 1.6rem var(--display)}
+.pkg .price small{font:500 .78rem var(--mono);color:var(--muted)}
+.pkg p{margin:0;font-size:.92rem;color:var(--muted)}
+.pkg .acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.pkg a.btn{display:inline-block;font:700 .88rem var(--display);padding:10px 14px;border-radius:6px;text-decoration:none;background:var(--accent);color:var(--accent-ink)}
+.pkg a.btn.ghost{background:transparent;color:var(--accent);border:1.5px solid var(--accent)}
 .foot{font-size:.8rem;color:var(--muted);max-width:75ch}
 .spin{display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:s .7s linear infinite;vertical-align:-2px;margin-right:6px}
 @keyframes s{to{transform:rotate(360deg)}}
@@ -122,6 +135,13 @@ a.book{display:inline-block;font:700 .95rem var(--display);padding:13px 20px;bor
   <div class="notice" id="notice" hidden></div>
 
   <div id="report"></div>
+
+  <section class="card pkgs" id="packages" aria-labelledby="pkg-title">
+    <h2 id="pkg-title">Packages</h2>
+    <p id="pkg-intro">Start with the free check. Pay only if you want us to fix it.</p>
+    <div class="pkg-grid" id="pkg-grid"></div>
+    <p style="font-size:.8rem">Prices in Canadian dollars. HST is added at checkout.</p>
+  </section>
 
   <form class="card lead" id="lead" name="lead" method="POST" data-netlify="true" netlify-honeypot="bot-field">
     <input type="hidden" name="form-name" value="lead">
@@ -152,6 +172,17 @@ const CONFIG = {
   contact: "belvicllp@gmail.com · 905-353-5279",
   about: "Run by Beltus Bejanga, a Niagara Region security analyst. ITCA Cybersecurity Fundamental designation, Cybersecurity Analyst Diploma in progress (Willis College), 8 hands-on SOC threat investigations. Service in English and French.",
   booking: "https://calendly.com/belvicllp/30min",  /* paste your Calendly link here, e.g. https://calendly.com/yourname/15min */
+  packages: [
+    { id: "lockdown", name: "Domain Lockdown", price: "$199", note: "one-time + HST",
+      what: "For domains that don't send email. We block anyone from sending email as your domain, then rescan to confirm.",
+      buy: "https://square.link/u/tdtnqxDe", buyLabel: "Get started" },
+    { id: "fixit", name: "Fix-It Package", price: "from $599", note: "one-time + HST",
+      what: "We set up SPF, DMARC, DKIM, DNSSEC and certificate locks with your providers, rescan to confirm an A or B, and include 30 days of monitoring.",
+      buy: "https://square.link/u/1ORAduGo", buyLabel: "Pay now", talkFirst: true },
+    { id: "ongoing", name: "Ongoing Protection", price: "$79", note: "per month + HST",
+      what: "Daily checks, instant alerts if anything breaks or your domain nears expiry, a monthly report, and priority fixes. Cancel anytime.",
+      buy: "https://square.link/u/vxqlTfhX", buyLabel: "Subscribe" }
+  ],
   cta: "Want these fixed? Book a free 15-minute review and we'll walk your team through every item."
 };
 
@@ -418,6 +449,30 @@ const GCOLOR = {A:"var(--ok)",B:"var(--ok)",C:"var(--warn)",D:"var(--bad)",F:"va
 
 let last = null;
 
+function renderPackages(rec, isSample, domain){
+  $("#pkg-intro").textContent = isSample
+    ? "Start with the free check. Pay only if you want us to fix it."
+    : rec === "ongoing" ? `${domain} is in good shape. Ongoing Protection keeps it that way.`
+    : rec === "lockdown" ? `${domain} doesn't send email, so a quick Domain Lockdown closes the gaps we found.`
+    : `Based on your results, the Fix-It Package covers what we found on ${domain}.`;
+  $("#pkg-grid").innerHTML = CONFIG.packages.map(p => {
+    const isRec = !isSample && p.id === rec;
+    const talk = p.talkFirst ? `<a class="btn" href="${esc(CONFIG.booking)}" target="_blank" rel="noopener">Book free review</a><a class="btn ghost" href="${esc(p.buy)}" target="_blank" rel="noopener">${esc(p.buyLabel)}</a>`
+                             : `<a class="btn${isRec ? "" : " ghost"}" href="${esc(p.buy)}" target="_blank" rel="noopener">${esc(p.buyLabel)}</a>`;
+    return `<div class="pkg${isRec ? " rec" : ""}">${isRec ? '<span class="badge">Recommended for you</span>' : ""}
+      <h3>${esc(p.name)}</h3><div class="price">${esc(p.price)} <small>${esc(p.note)}</small></div>
+      <p>${esc(p.what)}</p><div class="acts">${talk}</div></div>`;
+  }).join("");
+}
+
+function recommend(checks, letter){
+  const mx = checks.find(c => c.key === "mx");
+  const noMail = mx && /does not receive/.test(mx.finding);
+  const mailWeak = checks.some(c => (c.key === "spf" || c.key === "dmarc") && c.status !== "pass");
+  if((letter === "A") && !mailWeak) return "ongoing";
+  return noMail && mailWeak ? "lockdown" : "fixit";
+}
+
 function render(domain, checks, isSample){
   const {score,letter} = grade(checks);
   const n = s => checks.filter(c=>c.status===s).length;
@@ -425,6 +480,7 @@ function render(domain, checks, isSample){
     .sort((x,y)=>(x.status===y.status?0:x.status==="fail"?-1:1)||y.weight-x.weight).slice(0,3);
   const C = 2*Math.PI*58;
   last = {domain,checks,score,letter};
+  renderPackages(recommend(checks, letter), isSample, domain);
   if(!isSample){
     $("#lead-domain").value = domain;
     $("#lead-grade").value = `${letter} (${score}/100)`;
