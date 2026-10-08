@@ -1,0 +1,19 @@
+name: Deploy to Netlify
+
+# Netlify isn't notified of pushes on its own, so call its build hook.
+# The hook can only start a rebuild of this site; it can't read or change anything.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Netlify build
+        run: |
+          curl -fsS -X POST -d '{}' "${NETLIFY_BUILD_HOOK:-https://api.netlify.com/build_hooks/6ac7df4fc08a981a5714170d}"
+          echo "Netlify build started"
+        env:
+          NETLIFY_BUILD_HOOK: ${{ secrets.NETLIFY_BUILD_HOOK }}
