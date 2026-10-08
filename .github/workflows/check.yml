@@ -10,7 +10,7 @@ jobs:
       - name: Live site and deploy status
         run: |
           echo "--- deploy badge ---"
-          curl -fsS https://api.netlify.com/api/v1/badges/175ae529-ca58-45fd-8c23-eed83d5873b7/deploy-status | grep -oE '(success|failed|building|canceled|enqueued)' | head -3 || true
+          curl -fsSL https://api.netlify.com/api/v1/badges/175ae529-ca58-45fd-8c23-eed83d5873b7/deploy-status | sed 's/<[^>]*>/ /g' | tr -s ' ' | head -c 400; echo
           echo "--- live site ---"
           curl -fsSI https://belvic-security.netlify.app/ | grep -iE '^(HTTP|age|cache-status|x-nf-request-id|etag)' || true
           curl -fsS https://belvic-security.netlify.app/ > page.html
