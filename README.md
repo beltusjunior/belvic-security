@@ -5,3 +5,5 @@
 Live site: https://belvic-security.netlify.app
 
 `index.html` is the whole site. Every push to `main` triggers a Netlify deploy (`.github/workflows/deploy.yml`).
+
+Last updated: 2026-10-08
