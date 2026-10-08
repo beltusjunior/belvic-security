@@ -1,0 +1,19 @@
+name: Check live site
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Live site and deploy status
+        run: |
+          echo "--- deploy badge ---"
+          curl -fsS https://api.netlify.com/api/v1/badges/175ae529-ca58-45fd-8c23-eed83d5873b7/deploy-status | grep -oE '(success|failed|building|canceled|enqueued)' | head -3 || true
+          echo "--- live site ---"
+          curl -fsSI https://belvic-security.netlify.app/ | grep -iE '^(HTTP|age|cache-status|x-nf-request-id|etag)' || true
+          curl -fsS https://belvic-security.netlify.app/ > page.html
+          echo "bytes: $(wc -c < page.html)"
+          echo "has packages section: $(grep -c 'id="packages"' page.html)"
+          echo "has square links: $(grep -c 'square.link' page.html)"
