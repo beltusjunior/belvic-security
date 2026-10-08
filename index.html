@@ -1,0 +1,554 @@
+<title>Security Health Check</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Source+Sans+3:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one report column — scan bar, scorecard (grade + counts), fix-first list, then checks grouped by area. */
+:root{
+  --bg:#f3f5f6; --surface:#ffffff; --fg:#14202a; --muted:#5b6b78; --line:#d9e0e5;
+  --accent:#0f6d78; --accent-ink:#ffffff;
+  --ok:#1d7a46; --ok-bg:#e3f3ea; --warn:#9a5b00; --warn-bg:#fdf0d8; --bad:#b42318; --bad-bg:#fde7e4; --info:#475a6b; --info-bg:#e8eef3;
+  --display:"Archivo",system-ui,sans-serif; --body:"Source Sans 3",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e151b; --surface:#16212a; --fg:#e4ebf0; --muted:#93a4b1; --line:#2a3946;
+  --accent:#4cb8c4; --accent-ink:#06232a;
+  --ok:#5ccf8c; --ok-bg:#15301f; --warn:#f0b24d; --warn-bg:#352812; --bad:#ff8a7a; --bad-bg:#3a1a17; --info:#a9bccb; --info-bg:#1f2c37; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e151b; --surface:#16212a; --fg:#e4ebf0; --muted:#93a4b1; --line:#2a3946;
+  --accent:#4cb8c4; --accent-ink:#06232a;
+  --ok:#5ccf8c; --ok-bg:#15301f; --warn:#f0b24d; --warn-bg:#352812; --bad:#ff8a7a; --bad-bg:#3a1a17; --info:#a9bccb; --info-bg:#1f2c37; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--fg);font:16px/1.55 var(--body);margin:0}
+.wrap{max-width:920px;margin:0 auto;padding-inline:16px;padding-block:28px 56px;display:grid;gap:22px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px}
+.brand{font:800 1.05rem var(--display);letter-spacing:.02em}
+.brand span{color:var(--accent)}
+.tag{font:500 .72rem var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font:800 clamp(1.7rem,4.4vw,2.5rem)/1.1 var(--display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+.lede{color:var(--muted);margin:6px 0 0;max-width:62ch}
+form{display:flex;flex-wrap:wrap;gap:10px}
+form input{flex:1 1 260px;min-width:0;font:500 1.05rem var(--mono);padding:13px 14px;border:1.5px solid var(--line);border-radius:6px;background:var(--surface);color:var(--fg)}
+form input:focus-visible{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent)}
+button{font:700 .95rem var(--display);letter-spacing:.02em;padding:13px 20px;border-radius:6px;border:0;background:var(--accent);color:var(--accent-ink);cursor:pointer}
+button.ghost{background:transparent;color:var(--accent);border:1.5px solid var(--accent);padding:9px 14px;font-size:.85rem}
+button:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+button:disabled{opacity:.6;cursor:progress}
+.hint{font-size:.85rem;color:var(--muted);flex-basis:100%}
+.notice{border:1px solid var(--line);border-left:4px solid var(--warn);background:var(--warn-bg);padding:12px 14px;border-radius:6px;font-size:.93rem}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.score{display:grid;grid-template-columns:auto 1fr;gap:22px;padding:22px;align-items:center}
+.dial{position:relative;width:140px;height:140px}
+.dial svg{width:100%;height:100%;transform:rotate(-90deg)}
+.dial .g{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
+.dial .g b{font:800 3.1rem/1 var(--display)}
+.dial .g small{font:500 .78rem var(--mono);color:var(--muted)}
+.meta{min-width:0;display:grid;gap:8px}
+.meta .dom{font:700 1.35rem var(--mono);word-break:break-all}
+.meta .when{font-size:.85rem;color:var(--muted)}
+.verdict{font-size:1.02rem;max-width:56ch}
+.counts{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:6px;font:600 .78rem var(--mono);letter-spacing:.04em;text-transform:uppercase;padding:4px 9px;border-radius:999px;white-space:nowrap}
+.chip.pass{background:var(--ok-bg);color:var(--ok)} .chip.warn{background:var(--warn-bg);color:var(--warn)}
+.chip.fail{background:var(--bad-bg);color:var(--bad)} .chip.info{background:var(--info-bg);color:var(--info)}
+.sample{background:var(--info-bg);color:var(--info)}
+h2{font:800 1.15rem var(--display);margin:0 0 4px;letter-spacing:.01em}
+.sec{display:grid;gap:10px}
+.sec-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:6px}
+.sec-head .sub{font-size:.88rem;color:var(--muted)}
+.prio{padding:18px 20px;display:grid;gap:12px}
+.prio ol{margin:0;padding-left:1.3em;display:grid;gap:10px}
+.prio li{padding-left:4px}
+.prio li b{font-weight:600}
+.prio li span{display:block;color:var(--muted);font-size:.92rem}
+.checks{display:grid}
+.check{border-top:1px solid var(--line);display:grid;grid-template-columns:4px 1fr;}
+.check:first-child{border-top:0}
+.stripe.pass{background:var(--ok)} .stripe.warn{background:var(--warn)} .stripe.fail{background:var(--bad)} .stripe.info{background:var(--line)}
+.check:first-child .stripe{border-top-left-radius:10px} .check:last-child .stripe{border-bottom-left-radius:10px}
+details{min-width:0}
+summary{list-style:none;cursor:pointer;padding:14px 18px;display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:start}
+summary::-webkit-details-marker{display:none}
+summary:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+summary .t{font:700 1rem var(--display)}
+summary .f{grid-column:1/-1;color:var(--muted);font-size:.95rem}
+.body{padding:0 18px 16px;display:grid;gap:10px;font-size:.95rem}
+.body h3{font:600 .72rem var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 2px}
+.body p{margin:0;max-width:68ch}
+pre{margin:0;font:400 .8rem/1.5 var(--mono);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px 12px;overflow-x:auto;white-space:pre-wrap;word-break:break-all}
+.more{font:600 .78rem var(--mono);color:var(--accent)}
+details[open] .more{display:none}
+.cta{padding:20px;display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between}
+.cta p{margin:0;max-width:52ch}
+.cta .about{font-size:.85rem;color:var(--muted);border-top:1px solid var(--line);padding-top:10px;margin-top:4px}
+.cta .contact{font:500 .9rem var(--mono);color:var(--muted);user-select:all}
+.lead{padding:22px;display:grid;gap:14px}
+.lead p{margin:0;color:var(--muted);max-width:60ch}
+.lead .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.lead label{display:grid;gap:4px;font:600 .72rem var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);min-width:0}
+.lead input{font:400 1rem var(--body);padding:11px 12px;border:1.5px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg);min-width:0}
+.lead input:focus-visible{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent)}
+.lead .row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.lead .status{font-size:.92rem}
+.lead .status.ok{color:var(--ok)} .lead .status.bad{color:var(--bad)}
+.hp{position:absolute;left:-9999px}
+a.book{display:inline-block;font:700 .95rem var(--display);padding:13px 20px;border-radius:6px;border:1.5px solid var(--accent);color:var(--accent);text-decoration:none}
+.foot{font-size:.8rem;color:var(--muted);max-width:75ch}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:s .7s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes s{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation:none}}
+@media (max-width:560px){.score{grid-template-columns:1fr;justify-items:start}.dial{width:118px;height:118px}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="brand" id="brand"></div>
+    <div class="tag">Security Health Check</div>
+  </header>
+
+  <div>
+    <h1>How exposed is your business online?</h1>
+    <p class="lede">Enter a company domain. In under a minute we check the public settings that stop email impersonation, protect your website and keep your domain from being hijacked. Nothing is installed and no login is needed.</p>
+  </div>
+
+  <form id="scan" autocomplete="off">
+    <label for="domain" class="tag" style="flex-basis:100%">Company domain</label>
+    <input id="domain" name="domain" placeholder="yourcompany.com" inputmode="url" spellcheck="false">
+    <button id="go" type="submit">Run check</button>
+    <div class="hint">Only public records are read, the same information anyone on the internet can see.</div>
+  </form>
+
+  <div class="notice" id="notice" hidden></div>
+
+  <div id="report"></div>
+
+  <form class="card lead" id="lead" name="lead" method="POST" data-netlify="true" netlify-honeypot="bot-field">
+    <input type="hidden" name="form-name" value="lead">
+    <p class="hp"><label>Leave this empty <input name="bot-field" id="bot-field"></label></p>
+    <h2>Want help fixing these? Book your free 15-minute review</h2>
+    <p>Leave your details and we'll contact you within one business day to set up a time. We'll bring a step-by-step fix plan for your results.</p>
+    <div class="grid">
+      <label for="lead-name">Your name<input id="lead-name" name="name" required autocomplete="name"></label>
+      <label for="lead-email">Email<input id="lead-email" name="email" type="email" required autocomplete="email"></label>
+      <label for="lead-phone">Phone (optional)<input id="lead-phone" name="phone" type="tel" autocomplete="tel"></label>
+      <label for="lead-domain">Business domain<input id="lead-domain" name="domain" required></label>
+    </div>
+    <input type="hidden" name="grade" id="lead-grade">
+    <input type="hidden" name="summary" id="lead-summary">
+    <div class="row">
+      <button type="submit" id="lead-send">Request my free review</button>
+      <a class="book" id="book" href="#" target="_blank" rel="noopener" hidden>Book a call</a>
+      <span class="status" id="lead-status" role="status"></span>
+    </div>
+    <p style="font-size:.8rem">We only use your details to contact you about your results.</p>
+  </form>
+</div>
+
+<script>
+/* ---- Edit these for your own business ---- */
+const CONFIG = {
+  brand: "Belvic Group",
+  contact: "belvicllp@gmail.com · 905-353-5279",
+  about: "Run by Beltus Bejanga, a Niagara Region security analyst. ITCA Cybersecurity Fundamental designation, Cybersecurity Analyst Diploma in progress (Willis College), 8 hands-on SOC threat investigations. Service in English and French.",
+  booking: "https://calendly.com/belvicllp/30min",  /* paste your Calendly link here, e.g. https://calendly.com/yourname/15min */
+  cta: "Want these fixed? Book a free 15-minute review and we'll walk your team through every item."
+};
+
+const TYPES = {A:1,NS:2,CNAME:5,SOA:6,MX:15,TXT:16,AAAA:28,CAA:257};
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const cleanTxt = d => d.replace(/^"/,"").replace(/"$/,"").replace(/"\s*"/g,"");
+
+function timeout(p, ms){
+  return Promise.race([p, new Promise((_,rej)=>setTimeout(()=>rej(new Error("timeout")),ms))]);
+}
+
+/* ---- Live lookups (DNS-over-HTTPS, RDAP, HTTPS probe) ---- */
+async function dohGoogle(name,type){
+  const r = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(name)}&type=${type}&do=1`);
+  if(!r.ok) throw new Error("dns");
+  return r.json();
+}
+async function dohCloudflare(name,type){
+  const r = await fetch(`https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(name)}&type=${type}&do=1`,{headers:{accept:"application/dns-json"}});
+  if(!r.ok) throw new Error("dns");
+  return r.json();
+}
+const liveCtx = {
+  async dns(name,type){
+    let j;
+    try{ j = await timeout(dohGoogle(name,type),7000); }
+    catch{ j = await timeout(dohCloudflare(name,type),7000); }
+    return {status:j.Status, ad:!!j.AD, answers:(j.Answer||[]).filter(a=>a.type===TYPES[type]).map(a=>a.data)};
+  },
+  async https(host){
+    const ctl = new AbortController(); const t = setTimeout(()=>ctl.abort(),9000);
+    try{ await fetch("https://"+host,{mode:"no-cors",cache:"no-store",signal:ctl.signal}); return true; }
+    catch{ return false; } finally{ clearTimeout(t); }
+  },
+  async rdap(domain){
+    try{
+      const r = await timeout(fetch("https://rdap.org/domain/"+encodeURIComponent(domain)),9000);
+      if(!r.ok) return null;
+      return await r.json();
+    }catch{ return null; }
+  }
+};
+
+/* ---- Sample business (fictional) so the page shows a full report before any scan ---- */
+const SAMPLE_DOMAIN = "harbourview-dental.example";
+const inDays = n => new Date(Date.now()+n*864e5).toISOString();
+const SAMPLE = {
+  "MX": ['1 aspmx.l.google.com.','5 alt1.aspmx.l.google.com.'],
+  "TXT": ['"v=spf1 include:_spf.google.com include:servers.mcsv.net include:sendgrid.net include:spf.bookingsoft.example ~all"','"google-site-verification=Xx0example"'],
+  "_dmarc|TXT": ['"v=DMARC1; p=none"'],
+  "google._domainkey|TXT": ['"v=DKIM1; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA..."'],
+  "NS": ['ns1.registrar-dns.example.','ns2.registrar-dns.example.'],
+  "A": ['203.0.113.24'],
+  "www|A": ['203.0.113.24']
+};
+const sampleCtx = {
+  async dns(name,type){
+    const sub = name===SAMPLE_DOMAIN ? "" : name.slice(0,-(SAMPLE_DOMAIN.length+1));
+    const key = sub ? `${sub}|${type}` : type;
+    return {status:0, ad:false, answers:SAMPLE[key]||[]};
+  },
+  async https(){ return true; },
+  async rdap(){ return {events:[{eventAction:"expiration",eventDate:inDays(41)}],status:["client transfer prohibited"],entities:[{roles:["registrar"],vcardArray:["vcard",[["fn",{},"text","Example Registrar Ltd"]]]}]}; }
+};
+
+/* ---- Checks ---- */
+const DKIM_SELECTORS = ["google","selector1","selector2","default","k1","k2","s1","s2","mail","dkim","smtp","mandrill","mxvault","zoho","protonmail","fm1","everlytic","sig1"];
+
+function mailProvider(mx){
+  const s = mx.join(" ").toLowerCase();
+  if(/google|googlemail/.test(s)) return "Google Workspace";
+  if(/outlook|microsoft/.test(s)) return "Microsoft 365";
+  if(/zoho/.test(s)) return "Zoho Mail";
+  if(/mimecast/.test(s)) return "Mimecast";
+  if(/pphosted|proofpoint/.test(s)) return "Proofpoint";
+  return null;
+}
+
+async function runChecks(domain, ctx){
+  const q = (n,t) => ctx.dns(n,t).catch(()=>({error:true,status:-1,answers:[]}));
+  const [mx,txt,dmarc,sts,tlsrpt,ns,caa,a,www,soa] = await Promise.all([
+    q(domain,"MX"),q(domain,"TXT"),q("_dmarc."+domain,"TXT"),q("_mta-sts."+domain,"TXT"),
+    q("_smtp._tls."+domain,"TXT"),q(domain,"NS"),q(domain,"CAA"),q(domain,"A"),q("www."+domain,"A"),q(domain,"SOA")
+  ]);
+  if([mx,txt,ns,a].every(r=>r.error)) throw new Error("network");
+  if(ns.status===3 || soa.status===3) throw new Error("nxdomain");
+
+  const dkimRes = mx.answers.length ? await Promise.all(DKIM_SELECTORS.map(s=>q(`${s}._domainkey.${domain}`,"TXT").then(r=>({s,r})))) : [];
+  const hasSite = a.answers.length || www.answers.length;
+  const [httpsRoot, rdap] = await Promise.all([
+    hasSite ? ctx.https(a.answers.length ? domain : "www."+domain) : Promise.resolve(null),
+    ctx.rdap(domain)
+  ]);
+
+  const out = [];
+  const mxList = mx.answers.map(x=>x.split(" ").pop().replace(/\.$/,""));
+  const receivesMail = mxList.length>0 && !(mxList.length===1 && mxList[0]==="");
+  const provider = mailProvider(mxList);
+
+  /* Mail servers */
+  out.push(receivesMail ? {
+    cat:"email",key:"mx",title:"Email service",weight:0,status:"info",
+    finding:`Email is handled by ${provider||"a mail service"} (${mxList.length} mail server${mxList.length>1?"s":""}).`,
+    why:"Knowing the provider tells us which protections should be switched on.",
+    fix:"No action needed.",detail:mx.answers.join("\n")
+  } : {
+    cat:"email",key:"mx",title:"Email service",weight:0,status:"info",
+    finding:"This domain does not receive email.",
+    why:"Domains that don't send email still need protection, or criminals can send mail pretending to be them.",
+    fix:"Publish an SPF record of \"v=spf1 -all\" and a DMARC record with p=reject to show the domain never sends mail.",detail:"No MX records"
+  });
+
+  /* SPF */
+  const spfs = txt.answers.map(cleanTxt).filter(t=>/^v=spf1(\s|$)/i.test(t));
+  let spf;
+  if(!spfs.length){
+    spf = {status:"fail",finding:"No SPF record. Any server in the world can send email claiming to be from this domain.",
+      fix:receivesMail
+        ? `Add a TXT record on ${domain} listing the services allowed to send your email, e.g. "v=spf1 include:${provider==="Microsoft 365"?"spf.protection.outlook.com":"_spf.google.com"} -all".`
+        : `This domain doesn't use email, so lock it down: add a TXT record on ${domain} of "v=spf1 -all", which tells the world no server may send email as this domain.`};
+  } else if(spfs.length>1){
+    spf = {status:"fail",finding:`There are ${spfs.length} SPF records. Mail servers treat this as an error, so SPF is effectively off.`,
+      fix:"Merge them into a single SPF record."};
+  } else {
+    const r = spfs[0], toks = r.split(/\s+/).slice(1);
+    const all = toks.find(t=>/^[+\-~?]?all$/i.test(t));
+    const lookups = toks.filter(t=>/^[+\-~?]?(include:|a($|:|\/)|mx($|:|\/)|ptr|exists:|redirect=)/i.test(t)).length;
+    const q1 = all ? (all[0]==="-"?"-":all[0]==="~"?"~":all[0]==="?"?"?":"+") : null;
+    if(lookups>10) spf = {status:"fail",finding:`SPF uses ${lookups} DNS lookups. The limit is 10, so receiving servers will reject the check.`,fix:"Remove unused senders or flatten the record to 10 lookups or fewer."};
+    else if(q1==="+") spf = {status:"fail",finding:"SPF ends in \"+all\", which allows every server on the internet to send as you.",fix:"Change \"+all\" to \"-all\" (or \"~all\" while testing)."};
+    else if(!q1 || q1==="?") spf = {status:"warn",finding:"SPF exists but doesn't tell receivers what to do with unauthorised mail.",fix:"End the record with \"-all\" (or \"~all\")."};
+    else spf = {status:"pass",finding:`SPF is set up and ends in "${all}"${lookups>7?`, but it uses ${lookups} of the 10 lookups allowed`:""}.`,fix:lookups>7?"Trim unused senders before you add another email tool.":"No action needed."};
+    if(spf.status==="pass" && lookups>7) spf.status="warn";
+  }
+  out.push({cat:"email",key:"spf",title:"Sender list (SPF)",weight:15,...spf,
+    why:"SPF is the list of services allowed to send email as your business. Without it, impersonation emails are much more likely to land in inboxes.",
+    detail:spfs.join("\n")||"No v=spf1 TXT record found"});
+
+  /* DMARC */
+  const dm = dmarc.answers.map(cleanTxt).find(t=>/^v=DMARC1/i.test(t));
+  let d;
+  if(!dm) d = {status:"fail",finding:"No DMARC policy. Nothing tells receiving mail servers to block fake emails using your name.",
+    fix:!receivesMail
+      ? `This domain doesn't use email, so it can go straight to blocking: add a TXT record at _dmarc.${domain} of "v=DMARC1; p=reject;". Any email pretending to be from it will be rejected.`
+      : `Add a TXT record at _dmarc.${domain}: "v=DMARC1; p=none; rua=mailto:dmarc@${domain}". Review the reports for 2–4 weeks, then move to p=quarantine and p=reject.`};
+  else{
+    const tag = k => (dm.match(new RegExp(`(?:^|;)\\s*${k}\\s*=\\s*([^;]+)`,"i"))||[])[1]?.trim().toLowerCase();
+    const p = tag("p"), pct = parseInt(tag("pct")??"100",10), rua = tag("rua");
+    if(p==="reject" || p==="quarantine"){
+      d = pct<100 ? {status:"warn",finding:`DMARC is set to "${p}" but only for ${pct}% of mail.`,fix:"Raise pct to 100 once reports look clean."}
+                  : {status:"pass",finding:`DMARC is enforced (p=${p}). Fake emails using your domain get ${p==="reject"?"blocked":"sent to spam"}.`,fix:rua?"No action needed.":"Add a rua= address so you receive reports on who is sending as you."};
+    } else d = {status:"warn",finding:"DMARC is in monitoring mode only (p=none). Fake emails using your domain are still delivered.",
+      fix:`${rua?"":"Add a rua= reporting address, then "}review the reports and move to p=quarantine, then p=reject.`};
+  }
+  out.push({cat:"email",key:"dmarc",title:"Anti-impersonation policy (DMARC)",weight:20,...d,
+    why:"DMARC is the main defence against criminals sending invoices or payment requests that look like they came from you. Google and Yahoo now require it from bulk senders.",
+    detail:dm||"No v=DMARC1 record at _dmarc."+domain});
+
+  /* DKIM */
+  if(receivesMail){
+    const found = dkimRes.filter(({r})=>r.answers.some(x=>/p=|k=rsa|v=DKIM1/i.test(cleanTxt(x)))).map(({s})=>s);
+    out.push({cat:"email",key:"dkim",title:"Email signatures (DKIM)",weight:10,
+      status:found.length?"pass":"warn",
+      finding:found.length?`Outgoing email is digitally signed (selector${found.length>1?"s":""}: ${found.join(", ")}).`:"We couldn't find a DKIM signature key. Your email may not be signed, or it uses an uncommon setup.",
+      why:"A DKIM signature proves an email really came from you and wasn't changed on the way. DMARC relies on it.",
+      fix:found.length?"No action needed.":`Turn on DKIM signing in ${provider||"your email provider"}'s admin console and publish the key it gives you.`,
+      detail:found.length?found.map(s=>`${s}._domainkey.${domain}`).join("\n"):`Checked selectors: ${DKIM_SELECTORS.join(", ")}`});
+
+    const stsOk = sts.answers.map(cleanTxt).some(t=>/^v=STSv1/i.test(t));
+    const rptOk = tlsrpt.answers.map(cleanTxt).some(t=>/^v=TLSRPTv1/i.test(t));
+    out.push({cat:"email",key:"mtasts",title:"Encrypted email delivery (MTA-STS)",weight:5,
+      status:stsOk?"pass":"warn",
+      finding:stsOk?"Other mail servers are told to always use encryption when delivering to you.":"Email delivered to you can fall back to unencrypted transfer without anyone noticing.",
+      why:"MTA-STS stops attackers on the network from reading or redirecting email in transit.",
+      fix:stsOk?(rptOk?"No action needed.":"Add a TLS-RPT record (_smtp._tls) to get failure reports."):"Publish an MTA-STS policy file and _mta-sts TXT record, plus a TLS-RPT record for reports.",
+      detail:`_mta-sts: ${sts.answers.map(cleanTxt).join(" ")||"none"}\n_smtp._tls: ${tlsrpt.answers.map(cleanTxt).join(" ")||"none"}`});
+  }
+
+  /* Website */
+  if(hasSite){
+    out.push({cat:"web",key:"https",title:"Secure website (HTTPS)",weight:15,
+      status:httpsRoot?"pass":"fail",
+      finding:httpsRoot?"The website loads over HTTPS with a certificate browsers trust.":"The website didn't load securely. The certificate may be missing, expired or invalid.",
+      why:"Browsers show \"Not secure\" warnings on sites without a valid certificate, which drives customers away and exposes form data.",
+      fix:httpsRoot?"No action needed. Make sure the certificate renews automatically.":"Install a valid certificate (free from Let's Encrypt or your host) and redirect all traffic to https://.",
+      detail:`A: ${a.answers.join(", ")||"none"}\nwww A: ${www.answers.join(", ")||"none"}`});
+  } else {
+    out.push({cat:"web",key:"https",title:"Secure website (HTTPS)",weight:0,status:"info",
+      finding:"No website was found at this domain.",why:"Nothing to check.",fix:"No action needed.",detail:"No A records for the domain or www"});
+  }
+  const caaRecs = caa.answers;
+  out.push({cat:"web",key:"caa",title:"Certificate lock (CAA)",weight:5,
+    status:caaRecs.length?"pass":"warn",
+    finding:caaRecs.length?"Only named certificate authorities may issue certificates for this domain.":"Any certificate authority may issue a certificate for this domain.",
+    why:"A CAA record makes it harder for an attacker to get a valid certificate for a fake copy of your site.",
+    fix:caaRecs.length?"No action needed.":`Add a CAA record naming your certificate provider, e.g. ${domain}. CAA 0 issue "letsencrypt.org".`,
+    detail:caaRecs.join("\n")||"No CAA records"});
+
+  /* Domain */
+  out.push({cat:"domain",key:"dnssec",title:"Tamper-proof DNS (DNSSEC)",weight:10,
+    status:a.ad||soa.ad||ns.ad?"pass":"warn",
+    finding:a.ad||soa.ad||ns.ad?"DNS answers for this domain are cryptographically signed.":"DNS answers aren't signed, so they could be forged to send visitors or email to an attacker.",
+    why:"DNSSEC protects against DNS hijacking and cache poisoning.",
+    fix:a.ad||soa.ad||ns.ad?"No action needed.":"Turn on DNSSEC at your DNS host, then add the DS record at your registrar. Many hosts do it in one click.",
+    detail:`Validated (AD flag): ${a.ad||soa.ad||ns.ad?"yes":"no"}`});
+  out.push({cat:"domain",key:"ns",title:"DNS redundancy",weight:5,
+    status:ns.answers.length>=2?"pass":"warn",
+    finding:ns.answers.length>=2?`${ns.answers.length} name servers answer for this domain.`:"Only one name server answers for this domain. If it goes down, so does your email and website.",
+    why:"At least two name servers keep the domain online if one fails.",
+    fix:ns.answers.length>=2?"No action needed.":"Add a second name server with your DNS provider.",
+    detail:ns.answers.join("\n")||"No NS records"});
+
+  if(rdap){
+    const exp = (rdap.events||[]).find(e=>e.eventAction==="expiration")?.eventDate;
+    const days = exp ? Math.round((new Date(exp)-Date.now())/864e5) : null;
+    const status = (rdap.status||[]).map(s=>s.toLowerCase());
+    const reg = (rdap.entities||[]).find(e=>(e.roles||[]).includes("registrar"));
+    const regName = reg?.vcardArray?.[1]?.find(v=>v[0]==="fn")?.[3];
+    if(days!==null) out.push({cat:"domain",key:"expiry",title:"Domain renewal",weight:10,
+      status:days<30?"fail":days<90?"warn":"pass",
+      finding:days<0?"The domain registration has expired.":`The domain expires in ${days} days (${new Date(exp).toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"})}).`,
+      why:"An expired domain takes your email and website offline, and someone else can register it.",
+      fix:days<90?"Renew now and turn on auto-renew with a payment card that won't expire.":"Make sure auto-renew is on.",
+      detail:`Registrar: ${regName||"unknown"}\nExpiry: ${exp}`});
+    const locked = status.some(s=>s.includes("transfer prohibited"));
+    out.push({cat:"domain",key:"lock",title:"Transfer lock",weight:5,
+      status:locked?"pass":"warn",
+      finding:locked?"The domain is locked against unauthorised transfer.":"The domain isn't locked, so it could be moved to another registrar if your account is compromised.",
+      why:"A transfer lock stops someone from moving your domain away.",
+      fix:locked?"No action needed.":"Turn on \"transfer lock\" (or \"registrar lock\") in your registrar account, and protect that account with two-factor login.",
+      detail:`Status: ${status.join(", ")||"none reported"}`});
+  } else {
+    out.push({cat:"domain",key:"expiry",title:"Domain renewal",weight:0,status:"info",
+      finding:"The registry didn't share renewal details for this domain.",why:"Some country-code domains don't publish this.",
+      fix:"Check the expiry date and auto-renew setting in your registrar account.",detail:"RDAP lookup unavailable"});
+  }
+  return out;
+}
+
+function grade(checks){
+  const scored = checks.filter(c=>c.weight>0 && c.status!=="info");
+  const total = scored.reduce((s,c)=>s+c.weight,0);
+  const got = scored.reduce((s,c)=>s+c.weight*(c.status==="pass"?1:c.status==="warn"?.5:0),0);
+  const score = total ? Math.round(got/total*100) : 0;
+  const letter = score>=90?"A":score>=80?"B":score>=65?"C":score>=50?"D":"F";
+  return {score,letter};
+}
+
+const CATS = [
+  {id:"email",name:"Email impersonation",sub:"Can criminals send email pretending to be you?"},
+  {id:"web",name:"Website",sub:"Is your site trusted by browsers and hard to fake?"},
+  {id:"domain",name:"Domain ownership",sub:"Could you lose control of your domain?"}
+];
+const LABEL = {pass:"Pass",warn:"Needs work",fail:"At risk",info:"Info"};
+const VERDICT = {
+  A:"Strong. The basics are in place. Keep them maintained.",
+  B:"Good, with a few gaps worth closing.",
+  C:"Fair. There are gaps attackers commonly use against businesses like yours.",
+  D:"Weak. Several important protections are missing.",
+  F:"At risk. Key protections against impersonation and hijacking are missing."
+};
+const GCOLOR = {A:"var(--ok)",B:"var(--ok)",C:"var(--warn)",D:"var(--bad)",F:"var(--bad)"};
+
+let last = null;
+
+function render(domain, checks, isSample){
+  const {score,letter} = grade(checks);
+  const n = s => checks.filter(c=>c.status===s).length;
+  const prio = checks.filter(c=>c.status==="fail"||c.status==="warn")
+    .sort((x,y)=>(x.status===y.status?0:x.status==="fail"?-1:1)||y.weight-x.weight).slice(0,3);
+  const C = 2*Math.PI*58;
+  last = {domain,checks,score,letter};
+  if(!isSample){
+    $("#lead-domain").value = domain;
+    $("#lead-grade").value = `${letter} (${score}/100)`;
+    $("#lead-summary").value = summaryText();
+  }
+
+  $("#report").innerHTML = `
+  <div class="sec" style="gap:22px">
+    <div class="card score">
+      <div class="dial" role="img" aria-label="Grade ${letter}, score ${score} out of 100">
+        <svg viewBox="0 0 140 140"><circle cx="70" cy="70" r="58" fill="none" stroke="var(--line)" stroke-width="12"/>
+        <circle cx="70" cy="70" r="58" fill="none" stroke="${GCOLOR[letter]}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${C*score/100} ${C}"/></svg>
+        <div class="g"><b style="color:${GCOLOR[letter]}">${letter}</b><small>${score} / 100</small></div>
+      </div>
+      <div class="meta">
+        ${isSample?'<div><span class="chip sample">Sample report · fictional business</span></div>':""}
+        <div class="dom">${esc(domain)}</div>
+        <div class="verdict">${VERDICT[letter]}</div>
+        <div class="counts">
+          <span class="chip fail">${n("fail")} at risk</span><span class="chip warn">${n("warn")} needs work</span><span class="chip pass">${n("pass")} pass</span>
+        </div>
+        <div class="when">Checked ${new Date().toLocaleString(undefined,{dateStyle:"medium",timeStyle:"short"})}</div>
+      </div>
+    </div>
+
+    ${prio.length?`<div class="card prio"><h2>Fix these first</h2><ol>${prio.map(c=>`<li><b>${esc(c.title)}</b><span>${esc(c.fix)}</span></li>`).join("")}</ol></div>`:""}
+
+    ${CATS.map(cat=>{
+      const list = checks.filter(c=>c.cat===cat.id); if(!list.length) return "";
+      return `<div class="sec"><div class="sec-head"><h2>${cat.name}</h2><span class="sub">${cat.sub}</span></div>
+      <div class="card checks">${list.map(c=>`
+        <div class="check"><div class="stripe ${c.status}"></div>
+          <details><summary><span class="t">${esc(c.title)}</span><span class="chip ${c.status}">${LABEL[c.status]}</span>
+            <span class="f">${esc(c.finding)} <span class="more">Details</span></span></summary>
+            <div class="body">
+              <div><h3>Why it matters</h3><p>${esc(c.why)}</p></div>
+              <div><h3>How to fix</h3><p>${esc(c.fix)}</p></div>
+              <div><h3>What we found</h3><pre>${esc(c.detail)}</pre></div>
+            </div></details></div>`).join("")}</div></div>`;
+    }).join("")}
+
+    <div class="card cta">
+      <div style="display:grid;gap:6px;min-width:0"><p>${esc(CONFIG.cta)}</p><span class="contact">${esc(CONFIG.contact)}</span><p class="about">${esc(CONFIG.about)}</p></div>
+      <button class="ghost" id="copy" type="button">Copy summary for email</button>
+    </div>
+    <p class="foot">This check reads public DNS, registry and website information only. It does not test internal systems, staff devices or passwords. A passing grade is not a guarantee of security.</p>
+  </div>`;
+  $("#copy").addEventListener("click", copySummary);
+}
+
+function summaryText(){
+  const {domain,checks,score,letter} = last;
+  const lines = [`Security Health Check: ${domain}`,`Grade ${letter} (${score}/100). ${VERDICT[letter]}`,""];
+  for(const cat of CATS){
+    const list = checks.filter(c=>c.cat===cat.id); if(!list.length) continue;
+    lines.push(cat.name.toUpperCase());
+    for(const c of list) lines.push(`- [${LABEL[c.status]}] ${c.title}: ${c.finding}`);
+    lines.push("");
+  }
+  lines.push(CONFIG.cta, CONFIG.contact);
+  return lines.join("\n");
+}
+async function copySummary(e){
+  const btn = e.currentTarget, text = summaryText();
+  try{ await navigator.clipboard.writeText(text); btn.textContent="Copied"; }
+  catch{
+    const ta = document.createElement("textarea"); ta.value=text; ta.style.cssText="width:100%;height:220px;font:12px var(--mono)";
+    btn.replaceWith(ta); ta.select();
+  }
+  setTimeout(()=>{ if(btn.isConnected) btn.textContent="Copy summary for email"; },2000);
+}
+
+function normalise(v){
+  return v.trim().toLowerCase().replace(/^[a-z]+:\/\//,"").replace(/^www\./,"").split(/[\/?#:]/)[0].replace(/\.$/,"");
+}
+/* Reduce a subdomain (students.school.ca) to the main business domain (school.ca) */
+const TWO_PART = new Set(["co.uk","org.uk","ac.uk","gov.uk","ltd.uk","plc.uk","me.uk","com.au","net.au","org.au","edu.au","gov.au","co.nz","org.nz","co.za","org.za","com.br","com.mx","co.jp","co.in","net.in","org.in","com.sg","com.my","com.ng","com.gh","co.ke","or.ke","com.ph","com.tr","com.cn","com.hk","com.tw","co.il","co.kr","com.ar","com.co","com.pk","com.eg","co.ug","co.tz","com.cm"]);
+function mainDomain(host){
+  const p = host.split(".");
+  if(p.length<=2) return host;
+  return TWO_PART.has(p.slice(-2).join(".")) ? p.slice(-3).join(".") : p.slice(-2).join(".");
+}
+
+$("#brand").innerHTML = `${esc(CONFIG.brand)} <span>/</span> Security`;
+
+$("#scan").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const entered = normalise($("#domain").value);
+  const domain = mainDomain(entered);
+  const notice = $("#notice"); notice.hidden = true;
+  if(!/^([a-z0-9-]+\.)+[a-z]{2,}$/.test(entered)){
+    notice.textContent = "Enter a domain like yourcompany.com, without spaces."; notice.hidden=false; return;
+  }
+  const go = $("#go"); go.disabled = true; go.innerHTML = '<span class="spin"></span>Checking';
+  try{
+    const checks = await runChecks(domain, liveCtx);
+    render(domain, checks, false);
+    if(entered!==domain){
+      notice.textContent = `You entered ${entered}. We checked ${domain}, the main domain, because email and domain protections are set there and cover its subdomains.`;
+      notice.hidden = false;
+    }
+  }catch(err){
+    notice.textContent = err.message==="nxdomain"
+      ? `${domain} doesn't exist. Check the spelling and try again.`
+      : "Live lookups aren't available here. This preview blocks outside network requests, so it shows the sample report. Open the hosted version of this page to scan real domains.";
+    notice.hidden = false;
+  }finally{ go.disabled = false; go.textContent = "Run check"; }
+});
+
+
+if(CONFIG.booking){ const b=$("#book"); b.href=CONFIG.booking; b.hidden=false; }
+$("#lead").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const f = e.currentTarget, st = $("#lead-status"), btn = $("#lead-send");
+  btn.disabled = true; st.className="status"; st.textContent="Sending…";
+  try{
+    const r = await fetch("/",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:new URLSearchParams(new FormData(f)).toString()});
+    if(!r.ok) throw new Error(r.status);
+    f.querySelectorAll("input:not([type=hidden])").forEach(i=>{ if(i.id!=="bot-field") i.value=""; });
+    st.className="status ok"; st.textContent="Thanks. We'll contact you within one business day to book your review.";
+  }catch{
+    st.className="status bad"; st.textContent=`This form couldn't send. Email ${CONFIG.contact.split(" ")[0]} instead.`;
+  }finally{ btn.disabled=false; }
+});
+
+runChecks(SAMPLE_DOMAIN, sampleCtx).then(c=>render(SAMPLE_DOMAIN,c,true));
+</script>
