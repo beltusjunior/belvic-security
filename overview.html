@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Belvic Group Overview</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Source+Sans+3:wght@400;600;700&display=swap">
+<style>
+:root{--bg:#f3f5f6;--surface:#fff;--fg:#14202a;--muted:#5b6b78;--line:#d9e0e5;--accent:#0f6d78;--accent-bg:#e4f1f2;--bad:#b42318;
+  --display:"Archivo",system-ui,sans-serif;--body:"Source Sans 3",system-ui,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 var(--body)}
+.page{max-width:820px;margin:0 auto;padding:28px 16px 40px;display:grid;gap:18px}
+.sheet{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:28px clamp(16px,4vw,36px);display:grid;gap:18px}
+.top{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:6px;border-bottom:3px solid var(--accent);padding-bottom:10px}
+.brand{font:800 1.15rem var(--display);letter-spacing:.02em}.brand span{color:var(--accent)}
+.kicker{font:700 .72rem var(--display);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+h1{font:800 clamp(1.5rem,4vw,2rem)/1.15 var(--display);margin:0;letter-spacing:-.01em}
+h2{font:700 1.02rem var(--display);margin:0 0 6px;color:var(--accent)}
+p{margin:0}
+.muted{color:var(--muted)}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.box{border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.box b{display:block;font-family:var(--display);margin-bottom:2px}
+.pk{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.pk .box{border-top:4px solid var(--accent)}
+.price{font:800 1.35rem var(--display)}.price small{font:600 .75rem var(--body);color:var(--muted)}
+ol{margin:0;padding-left:20px}ol li{margin:2px 0}
+.cta{background:var(--accent-bg);border-radius:8px;padding:14px 16px;display:grid;gap:4px}
+.cta a{color:var(--accent);font-weight:700;word-break:break-all}
+.foot{font-size:.8rem;color:var(--muted);border-top:1px solid var(--line);padding-top:10px}
+.dl{justify-self:start;font:700 .9rem var(--display);color:#fff;background:var(--accent);padding:10px 16px;border-radius:6px;text-decoration:none}
+@media print{body{background:#fff;font-size:12.5px}.page{padding:0;max-width:none}.sheet{border:0;padding:0;gap:13px}.dl{display:none}@page{size:letter;margin:14mm}}
+</style>
+</head>
+<body>
+<div class="page">
+<a class="dl" href="belvic-overview.pdf" download>Download PDF</a>
+<div class="sheet">
+  <div class="top"><div class="brand">BELVIC <span>GROUP</span></div><div class="kicker">Security Health Check</div></div>
+
+  <div>
+    <h1>Can someone send email pretending to be your business?</h1>
+    <p class="muted" style="margin-top:6px">For most small businesses, yes. Criminals send fake invoices and payment-change requests that look exactly like they came from you. Your customers pay the wrong account, and your name takes the hit. The settings that stop this are simple, but most businesses have never had them set up. Since 2024, Google and Yahoo also expect them, so missing them can push your real emails into spam.</p>
+  </div>
+
+  <div>
+    <h2>What we check</h2>
+    <p class="muted" style="margin-bottom:8px">A grade from A to F in under a minute, using only public information. Nothing installed, no passwords needed.</p>
+    <div class="grid3">
+      <div class="box"><b>Email impersonation</b>Whether criminals can send email using your name (SPF, DMARC, DKIM).</div>
+      <div class="box"><b>Website</b>Whether your security certificate is valid and protected from being faked.</div>
+      <div class="box"><b>Domain ownership</b>Whether your domain could expire, be hijacked or be transferred away.</div>
+    </div>
+  </div>
+
+  <div>
+    <h2>Packages</h2>
+    <div class="pk">
+      <div class="box"><b>Domain Lockdown</b><div class="price">$199 <small>one-time</small></div>For domains that don't send email. We block anyone from sending email as your domain, then rescan to confirm.</div>
+      <div class="box"><b>Fix-It Package</b><div class="price">from $599 <small>one-time</small></div>We set up SPF, DMARC, DKIM, DNSSEC and certificate locks with your providers, rescan to confirm an A or B, and include 30 days of monitoring.</div>
+      <div class="box"><b>Ongoing Protection</b><div class="price">$79 <small>per month</small></div>Daily checks, instant alerts if anything breaks or your domain nears expiry, a monthly report, and priority fixes. Cancel anytime.</div>
+    </div>
+    <p class="muted" style="margin-top:8px;font-size:.85em">The check and a 15-minute walkthrough are free. Prices in Canadian dollars, plus 13% HST.</p>
+  </div>
+
+  <div>
+    <h2>How it works</h2>
+    <ol>
+      <li><b>Check:</b> we scan your domain and share a graded report.</li>
+      <li><b>Review:</b> we walk you through the results in 15 minutes, by phone or video.</li>
+      <li><b>Fix:</b> if you choose, we fix every issue and rescan to prove it. Most businesses are fully protected within a week.</li>
+      <li><b>Stay protected:</b> optional monitoring catches new problems early.</li>
+    </ol>
+  </div>
+
+  <div class="cta">
+    <p><b>See your own grade:</b> <a href="https://belvic-security.netlify.app">belvic-security.netlify.app</a></p>
+    <p><b>Book a free 15-minute review:</b> <a href="https://calendly.com/belvicllp/30min">calendly.com/belvicllp/30min</a></p>
+  </div>
+
+  <p class="foot">Belvic Group · Beltus Bejanga, Cybersecurity Analyst · ITCA Cybersecurity Fundamental designation · belvicllp@gmail.com · 905-353-5279 · 1-456 Carlton Street, St. Catharines, ON L2M 4X1</p>
+</div>
+</div>
+</body>
+</html>
