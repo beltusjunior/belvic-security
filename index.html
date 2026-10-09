@@ -228,6 +228,11 @@ const liveCtx = {
     try{ await fetch("https://"+host,{mode:"no-cors",cache:"no-store",signal:ctl.signal}); return true; }
     catch{ return false; } finally{ clearTimeout(t); }
   },
+  async reputation(domain){
+    const r = await timeout(fetch("/.netlify/functions/reputation?domain="+encodeURIComponent(domain)),15000);
+    if(!r.ok) return null;
+    return r.json();
+  },
   async rdap(domain){
     try{
       const r = await timeout(fetch("https://rdap.org/domain/"+encodeURIComponent(domain)),9000);
@@ -256,6 +261,7 @@ const sampleCtx = {
     return {status:0, ad:false, answers:SAMPLE[key]||[]};
   },
   async https(){ return true; },
+  async reputation(){ return {malware:{checked:true,host:SAMPLE_DOMAIN,flaggedBy:[]},mailBlocklists:{checked:true,ips:["192.0.2.10"],listed:[]},web:{reached:true,url:"https://"+SAMPLE_DOMAIN+"/",headers:{hsts:false,clickjacking:false,sniffing:true,csp:false},generator:"WordPress 6.1.1",wordpress:{version:"6.1",outdated:true}}}; },
   async rdap(){ return {events:[{eventAction:"expiration",eventDate:inDays(41)}],status:["client transfer prohibited"],entities:[{roles:["registrar"],vcardArray:["vcard",[["fn",{},"text","Example Registrar Ltd"]]]}]}; }
 };
 
@@ -283,9 +289,10 @@ async function runChecks(domain, ctx){
 
   const dkimRes = mx.answers.length ? await Promise.all(DKIM_SELECTORS.map(s=>q(`${s}._domainkey.${domain}`,"TXT").then(r=>({s,r})))) : [];
   const hasSite = a.answers.length || www.answers.length;
-  const [httpsRoot, rdap] = await Promise.all([
+  const [httpsRoot, rdap, rep] = await Promise.all([
     hasSite ? ctx.https(a.answers.length ? domain : "www."+domain) : Promise.resolve(null),
-    ctx.rdap(domain)
+    ctx.rdap(domain),
+    ctx.reputation ? ctx.reputation(domain).catch(()=>null) : Promise.resolve(null)
   ]);
 
   const out = [];
@@ -391,6 +398,41 @@ async function runChecks(domain, ctx){
     why:"A CAA record makes it harder for an attacker to get a valid certificate for a fake copy of your site.",
     fix:caaRecs.length?"No action needed.":`Add a CAA record naming your certificate provider, e.g. ${domain}. CAA 0 issue "letsencrypt.org".`,
     detail:caaRecs.join("\n")||"No CAA records"});
+
+  /* Reputation: blocklists and website settings (server-side lookups; skipped when unavailable) */
+  if(rep){
+    const mal = rep.malware||{};
+    if(mal.checked) out.push({cat:"web",key:"malware",title:"Malware & phishing blocklists",weight:15,
+      status:mal.flaggedBy.length?"fail":"pass",
+      finding:mal.flaggedBy.length?`${mal.host} is flagged as dangerous by ${mal.flaggedBy.join(" and ")}. Browsers, email filters and company networks may block it.`:"The domain isn't on the malware or phishing blocklists we check.",
+      why:"A flagged site usually means it was hacked. Visitors get warnings or get infected, and links to it in your emails are blocked.",
+      fix:mal.flaggedBy.length?"Treat this as urgent: have the site scanned and cleaned, change all hosting and admin passwords, update all software, then request removal from the blocklist.":"No action needed.",
+      detail:`Checked: ${mal.host}\nResult: ${mal.flaggedBy.join(", ")||"not listed"}`});
+    const bl = rep.mailBlocklists||{};
+    if(receivesMail && bl.checked) out.push({cat:"email",key:"blocklist",title:"Email blocklists",weight:10,
+      status:bl.listed.length?"fail":"pass",
+      finding:bl.listed.length?`Your mail server is on a spam blocklist (${[...new Set(bl.listed.map(l=>l.list))].join(", ")}), so your emails may go to junk or bounce.`:"Your mail servers aren't on the spam blocklists we check.",
+      why:"A blocklisted mail server means customers may never see your invoices, quotes or replies.",
+      fix:bl.listed.length?"Find the cause (often a hacked mailbox sending spam), fix it and change passwords, then request delisting from each blocklist.":"No action needed.",
+      detail:`Mail server IPs: ${bl.ips.join(", ")}\nListed: ${bl.listed.map(l=>`${l.ip} on ${l.list}`).join(", ")||"none"}`});
+    const web = rep.web||{};
+    if(web.reached){
+      const h = web.headers;
+      const missing = [!h.hsts&&"HTTPS enforcement (HSTS)",!h.clickjacking&&"clickjacking protection",!h.sniffing&&"content-type protection",!h.csp&&"content security policy"].filter(Boolean);
+      out.push({cat:"web",key:"headers",title:"Browser security settings",weight:5,
+        status:missing.length<=1?"pass":"warn",
+        finding:missing.length?`The website is missing ${missing.length} of 4 browser protections: ${missing.join(", ")}.`:"The website sends all 4 browser protections we check.",
+        why:"These settings tell browsers to block common attacks such as fake overlays on your pages and downgraded connections.",
+        fix:missing.length?"Ask your web host or developer to add the missing security headers. Most hosts, and Cloudflare, can do it in a few minutes.":"No action needed.",
+        detail:`Checked: ${web.url}\nStrict-Transport-Security: ${h.hsts?"yes":"no"}\nX-Frame-Options / frame-ancestors: ${h.clickjacking?"yes":"no"}\nX-Content-Type-Options: ${h.sniffing?"yes":"no"}\nContent-Security-Policy: ${h.csp?"yes":"no"}`});
+      if(web.wordpress) out.push({cat:"web",key:"software",title:"Website software up to date",weight:10,
+        status:web.wordpress.outdated?"fail":"pass",
+        finding:web.wordpress.outdated?`The website runs WordPress ${web.wordpress.version}, an old version with publicly known security holes.`:`The website runs a current version of WordPress (${web.wordpress.version}).`,
+        why:"Out-of-date WordPress is one of the most common ways small business websites get hacked.",
+        fix:web.wordpress.outdated?"Update WordPress, themes and plugins now, and turn on automatic updates.":"No action needed. Keep automatic updates on.",
+        detail:`Generator tag: ${web.generator}`});
+    }
+  }
 
   /* Domain */
   out.push({cat:"domain",key:"dnssec",title:"Tamper-proof DNS (DNSSEC)",weight:10,

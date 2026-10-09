@@ -26,7 +26,7 @@ h1{font:800 clamp(1.5rem,4vw,2rem)/1.15 var(--display);margin:0;letter-spacing:-
 h2{font:700 1.02rem var(--display);margin:0 0 6px;color:var(--accent)}
 p{margin:0}
 .muted{color:var(--muted)}
-.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
 .box{border:1px solid var(--line);border-radius:8px;padding:12px 14px}
 .box b{display:block;font-family:var(--display);margin-bottom:2px}
 .pk{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
@@ -37,7 +37,7 @@ ol{margin:0;padding-left:20px}ol li{margin:2px 0}
 .cta a{color:var(--accent);font-weight:700;word-break:break-all}
 .foot{font-size:.8rem;color:var(--muted);border-top:1px solid var(--line);padding-top:10px}
 .dl{justify-self:start;font:700 .9rem var(--display);color:#fff;background:var(--accent);padding:10px 16px;border-radius:6px;text-decoration:none}
-@media print{body{background:#fff;font-size:12.5px}.page{padding:0;max-width:none}.sheet{border:0;padding:0;gap:13px}.dl{display:none}@page{size:letter;margin:14mm}}
+@media print{body{background:#fff;font-size:12.5px}.grid3{grid-template-columns:1fr 1fr}.page{padding:0;max-width:none}.sheet{border:0;padding:0;gap:13px}.dl{display:none}@page{size:letter;margin:14mm}}
 </style>
 </head>
 <body>
@@ -56,7 +56,8 @@ ol{margin:0;padding-left:20px}ol li{margin:2px 0}
     <p class="muted" style="margin-bottom:8px">A grade from A to F in under a minute, using only public information. Nothing installed, no passwords needed.</p>
     <div class="grid3">
       <div class="box"><b>Email impersonation</b>Whether criminals can send email using your name (SPF, DMARC, DKIM).</div>
-      <div class="box"><b>Website</b>Whether your security certificate is valid and protected from being faked.</div>
+      <div class="box"><b>Website</b>Whether your certificate is valid, your browser protections are on and your WordPress is up to date.</div>
+      <div class="box"><b>Blocklists &amp; malware</b>Whether your site is flagged as dangerous, or your mail server is on a spam blocklist.</div>
       <div class="box"><b>Domain ownership</b>Whether your domain could expire, be hijacked or be transferred away.</div>
     </div>
   </div>
