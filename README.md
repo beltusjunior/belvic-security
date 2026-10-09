@@ -6,4 +6,4 @@ Live site: https://belvic-security.netlify.app
 
 `index.html` is the whole site. Netlify deploys every push to `main`.
 
-Last updated: 2026-10-08
+Last updated: 2026-10-09
